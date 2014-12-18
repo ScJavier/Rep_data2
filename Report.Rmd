@@ -1,0 +1,277 @@
+---
+title: "Study of Injuries Caused by Several Natural Disasters"
+author: "Javier Santibañez"
+date: "Thursday, December 18, 2014"
+output:
+  pdf_document: default
+  html_document:
+    keep_md: yes
+    number_sections: yes
+---
+
+# Synopsis
+In this work we explore the injuries caused by several types of natural disasters. First we have to get and process the data, then we have to analize it in order to answer these questions:
+
+1.- Which types of events (as indicated in the EVTYPE variable) are most harmful with respect to population health?
+
+2.- Which types of events have the greatest economic consequences?
+
+# Data Processing
+We use for the análysis the next packages:
+- `R.utils`, to unzip the data file.
+- `dplyr`, to handle the data set on R.
+- `lurbitade`, to handle with dates and times.
+- `ggplot2`, to make plots.
+
+```{r,results="hide",cache.=TRUE}
+require("R.utils"); require("dplyr"); require("lubridate"); require("ggplot2")
+```
+
+First we have to download the data from the web and then load the data into R.
+```{r,cache=TRUE}
+setwd("C:/Users/demyc 13/Documents/Course_Project_2")
+url<-'http://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2'
+zip_file<-'StormData.csv.bz2'
+csv_file<-'StormData.csv'
+if (!file.exists(zip_file)) download.file(url,zip_file)
+if (!file.exists(csv_file)) bunzip2(zip_file,destname=csv_file,remove=F)
+data<-tbl_df(read.csv(csv_file,stringsAsFactors=F))
+```
+Now, we have to select the relevant variables for this study, which are: type of disaster, date of occurency, and injuries. Variables were transformed into convenient formats.
+```{r}
+data1<-select(data,BGN_DATE,EVTYPE,FATALITIES,
+              INJURIES,PROPDMG,PROPDMGEXP,CROPDMG,CROPDMGEXP) %>%
+       mutate(BGN_DATE=mdy(gsub(" 0:00:00","",BGN_DATE)),
+              EVTYPE=tolower(EVTYPE))
+```
+
+It is important to know that there are a lot of disasters which are redundant, for example in some cases there are typos. Hence, the next code xoes an exhaustive depuration of  the variable `EVTYPE`. 
+
+```{r,echo=F}
+data1$EVTYPE[grep('storm',data1$EVTYPE)] <-'storm'
+data1$EVTYPE[grep('tropical',data1$EVTYPE)] <-'storm'
+data1$EVTYPE[grep('thunder',data1$EVTYPE)] <-'storm'
+data1$EVTYPE[grep('lighting',data1$EVTYPE)] <-'storm'
+data1$EVTYPE[grep('lightning',data1$EVTYPE)] <-'storm'
+data1$EVTYPE[grep('ligntning',data1$EVTYPE)] <-'storm'
+data1$EVTYPE[grep('heavy precipitation',data1$EVTYPE)] <-'storm'
+data1$EVTYPE[grep('heavy precipatation',data1$EVTYPE)] <-'storm'
+data1$EVTYPE[grep('tstm',data1$EVTYPE)] <-'storm'
+data1$EVTYPE[grep('snow',data1$EVTYPE)] <-'cold'
+data1$EVTYPE[grep('ice',data1$EVTYPE)] <-'cold'
+data1$EVTYPE[grep('icy',data1$EVTYPE)] <-'cold'
+data1$EVTYPE[grep('hail',data1$EVTYPE)] <-'cold'
+data1$EVTYPE[grep('freez',data1$EVTYPE)] <-'cold'
+data1$EVTYPE[grep('wintry',data1$EVTYPE)] <-'cold'
+data1$EVTYPE[grep('winter',data1$EVTYPE)] <-'cold'
+data1$EVTYPE[grep('blizz',data1$EVTYPE)] <-'cold'
+data1$EVTYPE[grep('cool',data1$EVTYPE)] <-'cold'
+data1$EVTYPE[grep('frost',data1$EVTYPE)] <-'cold'
+data1$EVTYPE[grep('low temperature',data1$EVTYPE)] <-'cold'
+data1$EVTYPE[grep('hypothermia',data1$EVTYPE)] <-'cold'
+data1$EVTYPE[grep('avalanche',data1$EVTYPE)] <-'cold'
+data1$EVTYPE[grep('avalance',data1$EVTYPE)] <-'cold'
+data1$EVTYPE[grep('sleet',data1$EVTYPE)] <-'cold'
+data1$EVTYPE[grep('cold',data1$EVTYPE)] <-'cold'
+data1$EVTYPE[grep('funnel',data1$EVTYPE)] <-'tornado'
+data1$EVTYPE[grep('gustnado',data1$EVTYPE)] <-'tornado'
+data1$EVTYPE[grep('cloud',data1$EVTYPE)] <-'tornado'
+data1$EVTYPE[grep('dust devil',data1$EVTYPE)] <-'tornado'
+data1$EVTYPE[grep('tornado',data1$EVTYPE)] <-'tornado'
+data1$EVTYPE[grep('torndao',data1$EVTYPE)] <-'tornado'
+data1$EVTYPE[grep('stream',data1$EVTYPE)] <-'flood'
+data1$EVTYPE[grep('floood',data1$EVTYPE)] <-'flood'
+data1$EVTYPE[grep('flood',data1$EVTYPE)] <-'flood'
+data1$EVTYPE[grep('high seas',data1$EVTYPE)] <-'oceanic'
+data1$EVTYPE[grep('marine',data1$EVTYPE)] <-'oceanic'
+data1$EVTYPE[grep('waterspout',data1$EVTYPE)] <-'oceanic'
+data1$EVTYPE[grep('water spout',data1$EVTYPE)] <-'oceanic'
+data1$EVTYPE[grep('waterspout-',data1$EVTYPE)] <-'oceanic'
+data1$EVTYPE[grep('waterspouts',data1$EVTYPE)] <-'oceanic'
+data1$EVTYPE[grep('wayterspout',data1$EVTYPE)] <-'oceanic'
+data1$EVTYPE[grep('waterspout/',data1$EVTYPE)] <-'oceanic'
+data1$EVTYPE[grep('tsunami',data1$EVTYPE)] <-'oceanic'
+data1$EVTYPE[grep('seiche',data1$EVTYPE)] <-'oceanic'
+data1$EVTYPE[grep('tide',data1$EVTYPE)] <-'oceanic'
+data1$EVTYPE[grep('swells',data1$EVTYPE)] <-'oceanic'
+data1$EVTYPE[grep('waves',data1$EVTYPE)] <-'oceanic'
+data1$EVTYPE[grep('wave',data1$EVTYPE)] <-'oceanic'
+data1$EVTYPE[grep('seas',data1$EVTYPE)] <-'oceanic'
+data1$EVTYPE[grep('rip',data1$EVTYPE)] <-'oceanic'
+data1$EVTYPE[grep('surf',data1$EVTYPE)] <-'oceanic'
+data1$EVTYPE[grep('hot',data1$EVTYPE)] <-'heat'
+data1$EVTYPE[grep('warm',data1$EVTYPE)] <-'heat'
+data1$EVTYPE[grep('heat',data1$EVTYPE)] <-'heat'
+data1$EVTYPE[grep('high temperature',data1$EVTYPE)] <-'heat'
+data1$EVTYPE[grep('wet',data1$EVTYPE)] <-'rain'
+data1$EVTYPE[grep('rain',data1$EVTYPE)] <-'rain'
+data1$EVTYPE[grep('shower',data1$EVTYPE)] <-'rain'
+data1$EVTYPE[grep('driest',data1$EVTYPE)] <-'drought'
+data1$EVTYPE[grep('below normal',data1$EVTYPE)] <-'drought'
+data1$EVTYPE[grep('dry',data1$EVTYPE)] <-'drought'
+data1$EVTYPE[grep('fire',data1$EVTYPE)] <-'fire'
+data1$EVTYPE[grep('volcan',data1$EVTYPE)] <-'volcano'
+data1$EVTYPE[grep('fog',data1$EVTYPE)] <-'fog'
+data1$EVTYPE[grep('vog',data1$EVTYPE)] <-'fog'
+data1$EVTYPE[grep('hurricane',data1$EVTYPE)] <-'hurricane'
+data1$EVTYPE[grep('floyd',data1$EVTYPE)] <-'hurricane'
+data1$EVTYPE[grep('typhoon',data1$EVTYPE)] <-'hurricane'
+data1$EVTYPE[grep('dust',data1$EVTYPE)]<-'wind'
+data1$EVTYPE[grep('wnd',data1$EVTYPE)]<-'wind'
+data1$EVTYPE[grep('turbulence',data1$EVTYPE)]<-'wind'
+data1$EVTYPE[grep('downburst',data1$EVTYPE)]<-'wind'
+data1$EVTYPE[grep('microburst',data1$EVTYPE)]<-'wind'
+data1$EVTYPE[grep('wind',data1$EVTYPE)]<-'wind'
+data1$EVTYPE[grep('slide',data1$EVTYPE)]<-'landslide'
+data1$EVTYPE[grep('coastal',data1$EVTYPE)]<-'landslide'
+data1$EVTYPE[grep('beach',data1$EVTYPE)]<-'landslide'
+data1$EVTYPE[grep('landslump',data1$EVTYPE)]<-'landslide'
+data1$EVTYPE[grep('landspout',data1$EVTYPE)]<-'landslide'
+data1$EVTYPE[grep('smoke',data1$EVTYPE)]<-'contamination'
+data1$EVTYPE[grep('record',data1$TYPE)]<-'unknown'
+data1$EVTYPE[grep('none',data1$EVTYPE)]<-'unknown'
+data1$EVTYPE[grep('no severe',data1$EVTYPE)]<-'unknown'
+data1$EVTYPE[grep('temperature record',data1$EVTYPE)]<-'unknown'
+data1$EVTYPE[grep('record temperature',data1$EVTYPE)]<-'unknown'
+data1$EVTYPE[grep('record temperatures',data1$EVTYPE)]<-'unknown'
+data1$EVTYPE[grep('other',data1$EVTYPE)]<-'unknown'
+data1$EVTYPE[grep('record high',data1$EVTYPE)]<-'unknown'
+data1$EVTYPE[grep('record low',data1$EVTYPE)]<-'unknown'
+data1$EVTYPE[grep('monthly',data1$EVTYPE)]<-'unknown'
+data1$EVTYPE[grep('high water',data1$EVTYPE)]<-'unknown'
+data1$EVTYPE[grep('summary',data1$EVTYPE)]<-'unknown'
+data1$EVTYPE[grep('apache',data1$EVTYPE)]<-'unknown'
+data1$EVTYPE[grep('southeast',data1$EVTYPE)]<-'unknown'
+data1$EVTYPE[grep('normal precipitation',data1$EVTYPE)]<-'unknown'
+data1$EVTYPE[grep('red flag',data1$EVTYPE)]<-'unknown'
+data1$EVTYPE[grep('northern',data1$EVTYPE)]<-'unknown'
+data1$EVTYPE[grep('rapidly',data1$EVTYPE)]<-'unknown'
+data1$EVTYPE[grep('drowning',data1$EVTYPE)]<-'unknown'
+data1$EVTYPE[grep('glaze',data1$EVTYPE)]<-'unknown'
+data1$EVTYPE[grep('mild pattern',data1$EVTYPE)]<-'unknown'
+data1$EVTYPE[grep('heavy mix',data1$EVTYPE)]<-'unknown'
+
+data1$EVTYPE[data1$EVTYPE=='dam break']<-"flood"
+data1$EVTYPE[data1$EVTYPE=='dam failure']<-"flood"
+data1$EVTYPE[data1$EVTYPE=='urban/small']<-"flood"
+data1$EVTYPE[data1$EVTYPE=='urban small']<-"flood"
+data1$EVTYPE[data1$EVTYPE=='urban/small strm fldg']<-"flood"
+data1$EVTYPE[data1$EVTYPE=='urban and small']<-"flood"
+data1$EVTYPE[data1$EVTYPE=='mixed precip']<-"rain"
+data1$EVTYPE[data1$EVTYPE=='mixed precipitation']<-"rain"
+data1$EVTYPE[data1$EVTYPE=='excessive precipitation']<-"rain"
+data1$EVTYPE[data1$EVTYPE=='record precipitation']<-"rain"
+data1$EVTYPE[data1$EVTYPE=='hyperthermia/exposure']<-"heat"
+data1$EVTYPE[data1$EVTYPE=='excessive']<-"unknown"
+data1$EVTYPE[data1$EVTYPE=='high']<-"unknown"
+data1$EVTYPE[data1$EVTYPE=='?']<-"unknown"
+```
+After the depuration we have only 15 types of natural disasters and one unknown cathegory. We can see now the number of ocurrences for every type of disaster.
+```{r}
+table(data1$EVTYPE)
+```
+
+If we explore the variables `PROPDMG` and `CROPDMG` we find no errors.
+
+```{r}
+summary(data1$PROPDMG)
+summary(data1$CROPDMG)
+```
+
+But when we look at the variables `PROPDMGEXP` and `CROPDMGEXP` we can find a lot of errors.
+
+```{r}
+summary(factor(data1$PROPDMGEXP))
+summary(factor(data1$CROPDMGEXP))
+```
+
+So, we have to process this variable to depure errors. we are going to do this simultaneously for both variables.
+
+```{r}
+data1$PROPDMGEXP<-tolower(data1$PROPDMGEXP)
+data1$CROPDMGEXP<-tolower(data1$CROPDMGEXP)
+data1$PROPDMGEXP[data1$PROPDMGEXP==""]<-0
+data1$PROPDMGEXP[data1$PROPDMGEXP=="b"]<-9
+data1$PROPDMGEXP[data1$PROPDMGEXP=="h"]<-2
+data1$PROPDMGEXP[data1$PROPDMGEXP=="k"]<-3
+data1$PROPDMGEXP[data1$PROPDMGEXP=="m"]<-6
+data1$PROPDMGEXP[data1$PROPDMGEXP %in% c("-","?","+")]<-NA
+
+data1$CROPDMGEXP[data1$CROPDMGEXP==""]<-0
+data1$CROPDMGEXP[data1$CROPDMGEXP=="b"]<-9
+data1$CROPDMGEXP[data1$CROPDMGEXP=="k"]<-3
+data1$CROPDMGEXP[data1$CROPDMGEXP=="m"]<-6
+data1$CROPDMGEXP[data1$CROPDMGEXP=="?"]<-NA
+```
+
+Now we can find no errors.
+
+```{r}
+summary(factor(data1$PROPDMGEXP))
+summary(factor(data1$CROPDMGEXP))
+```
+
+
+Finally, as many Coursera students have reported, there are not registers of all event types before 1993, The next graphic will help us to understand it.
+```{r}
+plot0<-group_by(data1,EVTYPE,Year=year(BGN_DATE)) %>%
+       summarise(n=n())
+ggplot(plot0,aes(Year,n))+geom_line(aes(color=EVTYPE),size=2)+
+  labs(title="Number of natural disasters in the U.S. since 1950")+
+  xlab("Year")+ylab("Number of events")+
+  theme(plot.title=element_text(size=12,face="bold"),
+        axis.text.x=element_text(size=11,colour="black",face="bold",angle=45))
+```
+
+We can see that there are only registers of tornados, cold events and storms before 1993. So this does not mean that before 1993 there ware not other types of events in the U.S. but there are no registers. This fact will affect our next analysis, then we will subset the original data set keeping only information after 1993.
+
+```{r}
+data1<-filter(data1,BGN_DATE>years(1993))
+```
+
+# Results
+
+We have to answer two questions. First question is about people health injuries. We are going to show a barplot with the number of deaths and/or injuries caused by the most dangerous natural disasters.
+
+```{r}
+plot1<-group_by(data1,EVTYPE) %>%
+       summarise(health=sum(FATALITIES,INJURIES,na.rm=T)/1000) %>%
+       arrange(desc(health))
+plot1<-plot1[1:10,]
+ggplot(plot1,aes(EVTYPE,health))+
+  geom_bar(stat="identity",fill="steelblue")+
+  labs(title="Top ten most harmful natural disasters in the U.S.")+
+  xlab("Event types")+ylab("Thousands of prople injured or death")+
+  theme(plot.title=element_text(size=12,face="bold"),
+        axis.text.x=element_text(size=11,colour="black",face="bold",angle=45))
+
+```
+
+Second question is about what natural disasters have the most greater economical consecuences. So, we have to compute the economic damage for every type of disaster.
+
+```{r}
+data1$PROPDMG<-as.numeric(data1$PROPDMG)*10^as.numeric(data1$PROPDMGEXP)
+data1$PROPDMG<-as.numeric(data1$CROPDMG)*10^as.numeric(data1$CROPDMGEXP)
+
+plot2<-group_by(data1,EVTYPE) %>%
+       summarise(econ.dmg=sum(PROPDMG,CROPDMG,na.rm=T)/10^6) %>%
+       arrange(desc(econ.dmg))
+plot2<-plot2[1:10,]
+ggplot(plot2,aes(EVTYPE,econ.dmg))+
+  geom_bar(stat="identity",fill="steelblue")+
+  labs(title="Top ten most expensive natural disasters in the U.S.")+
+  xlab("Event types")+ylab("Economic loses in millions (U.S. dollars)")+
+  theme(plot.title=element_text(size=12,face="bold"),
+        axis.text.x=element_text(size=11,colour="black",face="bold",angle=45))
+```
+
+# Conclussion
+Remember, we have to answer two questions:
+
+* Which types of events are most harmful with respect to population health?
+
+* Which types of events have the greatest economic consequences?
+
+From our plot *Top ten most harmful natural disasters in the U.S.*, we can see that tornadoes have the first places, followed far behind by storms, heats, floods and colds.
+
+On the other hand, from our plot *Top ten most expensive natural disasters in the U.S.* we can see that drought have the greatest economic consequences. Other disasters with important economic consequences are floods, storms, colds and hurricanes.
